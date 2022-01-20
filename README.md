@@ -1,5 +1,5 @@
-# brownbandslackmafia-winter-2022
-Slack app for Brown Band Mafia in January 2022
+# tic-slack-toe
+Competitive tic tac toe app for Slack workspaces
 
 # Config Variables
 - SLACK_BOT_TOKEN
