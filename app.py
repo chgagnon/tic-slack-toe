@@ -105,7 +105,12 @@ def handle_tictacmove(ack, respond, command):
                 and col_num < BOARD_WIDTH
             ):
                 player = command["user_id"]
-                make_tic_tac_toe_move(player, row_num, col_num, respond)
+                prev_player = lookup_prev_player()
+                if prev_player == player:
+                    respond("You're not allowed to move twice in a row. Find someone to play with you!")
+                else:
+                    update_prev_player(player)
+                    make_tic_tac_toe_move(player, row_num, col_num, respond)
             else:
                 respond(
                     "Try again - your move row and column were too large or too small."
@@ -466,88 +471,80 @@ def update_prev_player(player_id):
 
 def make_tic_tac_toe_move(player, row_num, col_num, respond):
 
-    prev_player = lookup_prev_player()
+    slack_msg = f"====CURRENT BOARD===\n"
+    last_move_by_str = f"Last move made by <@{player}>\n"
+    board_state = []
+    board_index = row_num * BOARD_WIDTH + col_num
+    conn = None
+    try:
+        """query data from the tic tac toe table"""
+        conn = psycopg2.connect(os.environ["DATABASE_URL"])
+        cur = conn.cursor()
+        cur.execute(f"SELECT tile_state FROM tic_tac_board ORDER BY square_id ASC")
 
-    if prev_player == player:
-        respond("You're not allowed to move twice in a row. Find someone to play with you!")
-    else:
+        print("Getting existing tic tac toe board")
 
-        update_prev_player(player)
+        r = cur.fetchone()
 
-        slack_msg = f"====CURRENT BOARD===\n"
-        last_move_by_str = f"Last move made by <@{player}>\n"
-        board_state = []
-        board_index = row_num * BOARD_WIDTH + col_num
-        conn = None
-        try:
-            """query data from the tic tac toe table"""
-            conn = psycopg2.connect(os.environ["DATABASE_URL"])
-            cur = conn.cursor()
-            cur.execute(f"SELECT tile_state FROM tic_tac_board ORDER BY square_id ASC")
-
-            print("Getting existing tic tac toe board")
-
+        while r is not None:
+            board_state.append(convert_move_str_to_enum(r[0]))
             r = cur.fetchone()
 
-            while r is not None:
-                board_state.append(convert_move_str_to_enum(r[0]))
-                r = cur.fetchone()
+        cur.close()
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(error)
+    finally:
+        if conn is not None:
+            conn.close()
 
-            cur.close()
-        except (Exception, psycopg2.DatabaseError) as error:
-            print(error)
-        finally:
-            if conn is not None:
-                conn.close()
+        if len(board_state) != BOARD_HEIGHT * BOARD_WIDTH:
+            print("ERROR: board_state was not the correct length")
+        else:
 
-            if len(board_state) != BOARD_HEIGHT * BOARD_WIDTH:
-                print("ERROR: board_state was not the correct length")
+            if board_state[board_index] != TicTacMove.OPEN:
+                respond("Try again - that space is already taken.")
             else:
+                curr_team = get_and_update_curr_move_team()
+                board_state[board_index] = curr_team
 
-                if board_state[board_index] != TicTacMove.OPEN:
-                    respond("Try again - that space is already taken.")
+                # get next team to use in Slack msg response
+                next_team = TicTacMove.get_opposite(curr_team)
+                next_team_str = f"Next move will be for team `{convert_move_enum_to_str(next_team)}`\n"
+
+                # winner currently not used because X and O team assignments don't matter
+                whether_won, winner = check_for_win(board_state)
+                if whether_won == True:
+                    # record a win for the current player
+                    record_win(player)
+                    # reset the (database) board state
+                    reset_board_state()
+                    # print a blank board to the chat
+                    slack_msg += (
+                        f"This is a new game - <@{player}> won the previous game.\n"
+                    )
+                    slack_msg += next_team_str
+                    slack_msg += BLANK_BOARD_STR
+                    respond(slack_msg, response_type="in_channel")
+                elif whether_won == TIE_STR:
+                    # I know using a string as an third boolean is very
+                    # silly - I'm sorry
+
+                    # reset the (database) board state
+                    reset_board_state()
+
+                    slack_msg += f"The previous game ended in a tie - nobody won.\n"
+                    slack_msg += last_move_by_str
+                    slack_msg += next_team_str
+                    slack_msg += BLANK_BOARD_STR
+                    respond(slack_msg, response_type="in_channel")
                 else:
-                    curr_team = get_and_update_curr_move_team()
-                    board_state[board_index] = curr_team
-
-                    # get next team to use in Slack msg response
-                    next_team = TicTacMove.get_opposite(curr_team)
-                    next_team_str = f"Next move will be for team `{convert_move_enum_to_str(next_team)}`\n"
-
-                    # winner currently not used because X and O team assignments don't matter
-                    whether_won, winner = check_for_win(board_state)
-                    if whether_won == True:
-                        # record a win for the current player
-                        record_win(player)
-                        # reset the (database) board state
-                        reset_board_state()
-                        # print a blank board to the chat
-                        slack_msg += (
-                            f"This is a new game - <@{player}> won the previous game.\n"
-                        )
-                        slack_msg += next_team_str
-                        slack_msg += BLANK_BOARD_STR
-                        respond(slack_msg, response_type="in_channel")
-                    elif whether_won == TIE_STR:
-                        # I know using a string as an third boolean is very
-                        # silly - I'm sorry
-
-                        # reset the (database) board state
-                        reset_board_state()
-
-                        slack_msg += f"The previous game ended in a tie - nobody won.\n"
-                        slack_msg += last_move_by_str
-                        slack_msg += next_team_str
-                        slack_msg += BLANK_BOARD_STR
-                        respond(slack_msg, response_type="in_channel")
-                    else:
-                        slack_msg += last_move_by_str
-                        slack_msg += next_team_str
-                        # add a tile and print out the new board
-                        update_board_state(row_num, col_num, curr_team)
-                        board_str = get_board_str(board_state)
-                        slack_msg += board_str
-                        respond(slack_msg, response_type="in_channel")
+                    slack_msg += last_move_by_str
+                    slack_msg += next_team_str
+                    # add a tile and print out the new board
+                    update_board_state(row_num, col_num, curr_team)
+                    board_str = get_board_str(board_state)
+                    slack_msg += board_str
+                    respond(slack_msg, response_type="in_channel")
 
 
 # Start your app
