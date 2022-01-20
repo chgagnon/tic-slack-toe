@@ -9,6 +9,7 @@ import logging
 from enum import Enum
 import psycopg2
 
+
 class TicTacMove(Enum):
     OPEN = 1
     X = 2
@@ -67,6 +68,7 @@ def test_database_connection():
             conn.close()
             print("Database connection closed.")
 
+
 # Initializes your app with your bot token and socket mode handler
 app = App(
     token=os.environ.get("SLACK_BOT_TOKEN"),
@@ -88,6 +90,7 @@ def translate_user_id_to_name(user_id):
             return (user["id"], user["real_name"])
     return ("aw shucks", "could not find a user name for this user ID")
 
+
 @app.command("/tictacmove")
 def handle_tictacmove(ack, respond, command):
     ack()
@@ -107,7 +110,9 @@ def handle_tictacmove(ack, respond, command):
                 player = command["user_id"]
                 prev_player = lookup_prev_player()
                 if prev_player == player:
-                    respond("You're not allowed to move twice in a row. Find someone to play with you!")
+                    respond(
+                        "You're not allowed to move twice in a row. Find someone to play with you!"
+                    )
                 else:
                     update_prev_player(player)
                     make_tic_tac_toe_move(player, row_num, col_num, respond)
@@ -424,6 +429,7 @@ def reset_board_state():
         if conn is not None:
             conn.close()
 
+
 def lookup_prev_player():
     conn = None
     last_player_id = None
@@ -450,6 +456,7 @@ def lookup_prev_player():
 
         return last_player_id
 
+
 def update_prev_player(player_id):
     conn = None
     sql = """UPDATE tic_tac_prev_player
@@ -468,6 +475,7 @@ def update_prev_player(player_id):
     finally:
         if conn is not None:
             conn.close()
+
 
 def make_tic_tac_toe_move(player, row_num, col_num, respond):
 
