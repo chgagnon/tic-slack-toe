@@ -109,6 +109,7 @@ def handle_tictacmove(ack, respond, command):
             ):
                 player = command["user_id"]
                 prev_player = lookup_prev_player()
+                print(f"Current player is {player} and prev player was {prev_player}")
                 if prev_player == player:
                     respond(
                         "You're not allowed to move twice in a row. Find someone to play with you!"
