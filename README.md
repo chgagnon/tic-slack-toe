@@ -38,6 +38,8 @@ The database should be configured with the following sequence of commands:
       all tiles are OPEN
 - `INSERT INTO tic_tac_curr_team(letter) VALUES ('X');` - sets the very first move to
   be for team X (this could be changed to O if you like)
+- `INSERT INTO tic_tac_prev_player(player_id) VALUES ('');` - adds
+  a row to the table so that it can be updated once a move is made
 
 I configured these tables manually, using the Heroku Postgres CLI, but their setup
 could be configured with a script.
