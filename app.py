@@ -36,7 +36,7 @@ BOARD_HEIGHT = 3
 BOARD_WIDTH = 3
 # backticks escape Slack markdown formatting (by formatting as "code")
 BLANK_BOARD_STR = "`_|_|_`\n`_|_|_`\n` | | `"
-TIC_TAC_CHANNEL_NAMES = ["tic-tac-toe"]
+TIC_TAC_CHANNEL_NAMES = ["tic-tac-toe", "memes"]
 TIE_STR = "TIE"
 
 
