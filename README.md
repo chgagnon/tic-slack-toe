@@ -3,9 +3,9 @@ Competitive tic tac toe app for Slack workspaces
 
 # Config Variables
 - SLACK_BOT_TOKEN
-- SLACK_APP_TOKEN
 - DATABASE_URL - set by Heroku, often updated while app is deployed
 - PORT - set by Heroku, often updated while app is deployed
+- SLACK_APP_TOKEN - needed only for Slack app Socket Mode (and so not used in this version of `app.py`)
 
 # Heroku Files
 - `Procfile` - specifies command for app start-up
@@ -22,7 +22,7 @@ The URL access point for the database should be given by the `DATABASE_URL`
 environment variable.
 The database should be configured with the following sequence of commands:
 - `CREATE TABLE tic_tac_win (player_id TEXT UNIQUE, num_wins INT);` - create a table for 
-  Slack ID and corresponding win counts for each player
+  Slack ID and corresponding win count for each player
 - `CREATE TYPE tictactile AS ENUM ('X', 'O', 'OPEN');` - create enum in Postgres to
   represent possible tile states
 - `CREATE TABLE tic_tac_curr_team (letter tictactile);` - create a table to store a single
@@ -39,3 +39,8 @@ The database should be configured with the following sequence of commands:
 
 I configured these tables manually, using the Heroku Postgres CLI, but their setup
 could be configured with a script.
+
+# Slack Setup
+- slash commands: /tictacmove and /tictacscoreboard
+- permissions and event subscriptions
+- setting Heroku env variables
